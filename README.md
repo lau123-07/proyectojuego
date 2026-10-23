@@ -39,5 +39,15 @@ Abrir http://localhost:8000
 - Juegos de ejemplo del comparador y la calculadora: `public/js/datos.js`.
 - Los índices de rendimiento son orientativos y hay que calibrarlos con benchmarks reales;
   el siguiente paso es pasarlos a la base de datos.
-- Juegos, requisitos y precios reales: `app/Services/SteamStore.php` (tienda de Steam Argentina, con caché).
+- Juegos, requisitos, precios, Metacritic y sitio oficial: `app/Services/SteamStore.php` (tienda de Steam Argentina, con caché).
+- Juegos con FPS limitados por el propio juego: `config/juegos.php` (`topes_fps`).
+
+## Fuentes opcionales (claves en `.env`)
+
+| Variable | Para qué | Dónde se obtiene |
+|----------|----------|------------------|
+| `YOUTUBE_API_KEY` | Videos de rendimiento y análisis en la página del juego | Google Cloud Console → YouTube Data API v3 |
+| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | Horas para terminar el juego | App en https://dev.twitch.tv/console/apps |
+
+Sin estas claves la web funciona igual: en lugar de los videos y las horas muestra enlaces a YouTube y los pasos para configurarlas.
 - La configuración de "Mi PC" se guarda en el navegador (localStorage).

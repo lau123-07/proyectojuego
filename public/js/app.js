@@ -123,12 +123,42 @@ function opcionesAgrupadas(lista, seleccion) {
   return series.map((serie) => `<optgroup label="${serie}">${lista.filter((x) => x.serie === serie).map((x) => `<option value="${x.id}"${x.id === seleccion ? ' selected' : ''}>${x.nombre}</option>`).join('')}</optgroup>`).join('');
 }
 
-function opcionesJuegos(seleccion) {
-  return JUEGOS.map((j) => `<option value="${j.id}"${j.id === seleccion ? ' selected' : ''}>${j.nombre}</option>`).join('');
-}
-
 function barra(pct, alt) {
   return `<div class="bar${alt ? ' alt' : ''}"><span style="width:${Math.max(2, Math.min(100, pct))}%"></span></div>`;
+}
+
+// Escala de colores de Metacritic: 75+ favorable, 50–74 mixta, menos de 50 desfavorable.
+const claseMetacritic = (n) => (n == null ? 'mc-na' : n >= 75 ? 'mc-alto' : n >= 50 ? 'mc-medio' : 'mc-bajo');
+
+function metacriticHTML(n) {
+  if (n == null) return '<span class="sug-mc mc-na" title="Sin puntaje en Metacritic"><small>Metacritic</small>—</span>';
+  return `<span class="sug-mc ${claseMetacritic(n)}" title="Puntaje en Metacritic"><small>Metacritic</small>${n}</span>`;
+}
+
+// Videos de YouTube para el juego (rendimiento con la placa del usuario y análisis).
+async function cargarVideos(juego, gpu) {
+  const corto = gpu.vram ? gpu.nombre.replace(/^(NVIDIA GeForce|AMD Radeon|Intel)\s+/, '').replace(/\s+\d+\s*GB$/, '') : '';
+  $('#videos-rend-titulo').textContent = corto ? `Rendimiento con una ${corto}` : 'Rendimiento en PC';
+  const pintar = (el, bloque, configurado) => {
+    if (!bloque) return;
+    if (bloque.videos.length) {
+      el.innerHTML = bloque.videos.map((v) => `
+        <a class="video" href="https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}" target="_blank" rel="noopener">
+          ${v.miniatura ? `<img src="${escapar(v.miniatura)}" alt="" loading="lazy" width="320" height="180">` : ''}
+          <span class="video-info"><strong>${escapar(v.titulo)}</strong><span>${escapar(v.canal)}${v.fecha ? ` · ${v.fecha.split('-').reverse().join('/')}` : ''}</span></span>
+        </a>`).join('');
+    } else {
+      el.innerHTML = `<div class="card-inset note" style="grid-column:1/-1">${ICONOS.info}<p>${configurado ? 'No encontramos videos para esta búsqueda.' : 'Para ver los videos acá hace falta configurar <code>YOUTUBE_API_KEY</code> en el archivo <code>.env</code>.'} <a href="${escapar(bloque.url)}" target="_blank" rel="noopener">Buscar «${escapar(bloque.consulta)}» en YouTube ↗</a></p></div>`;
+    }
+  };
+  try {
+    const r = await fetch(`/juego/${juego.id}/videos?gpu=${encodeURIComponent(corto)}`, { headers: { Accept: 'application/json' } });
+    const datos = await r.json();
+    pintar($('#videos-rendimiento'), datos.rendimiento, datos.configurado);
+    pintar($('#videos-analisis'), datos.analisis, datos.configurado);
+  } catch (e) {
+    $$('#videos-rendimiento, #videos-analisis').forEach((el) => { el.innerHTML = '<p class="muted">No pudimos cargar los videos.</p>'; });
+  }
 }
 
 function precioHTML(p) {
@@ -141,7 +171,8 @@ function precioHTML(p) {
 }
 
 // Buscador de juegos con sugerencias desde Steam (vía /buscar-juegos).
-function buscadorJuegos(form) {
+// Sin alElegir abre la página del juego; con alElegir se lo pasa a esa función.
+function buscadorJuegos(form, alElegir) {
   const input = $('input', form);
   const lista = $('.sugerencias', form);
   let resultados = [];
@@ -149,7 +180,12 @@ function buscadorJuegos(form) {
   let espera;
   let ultimaConsulta = 0;
 
-  const ir = (j) => { location.href = `/juego/${j.id}`; };
+  const ir = (j) => {
+    if (!alElegir) { location.href = `/juego/${j.id}`; return; }
+    input.value = j.nombre;
+    cerrar();
+    alElegir(j);
+  };
   const cerrar = () => { lista.hidden = true; input.setAttribute('aria-expanded', 'false'); activo = -1; };
   const pintar = (estadoTexto) => {
     if (estadoTexto) {
@@ -159,7 +195,7 @@ function buscadorJuegos(form) {
         <li id="sug-${i}" role="option" aria-selected="${i === activo}" data-i="${i}">
           ${j.imagen ? `<img src="${escapar(j.imagen)}" alt="" width="92" height="35" loading="lazy">` : '<span class="sug-img"></span>'}
           <span class="sug-nombre">${escapar(j.nombre)}</span>
-          ${j.metascore ? `<span class="sug-meta" title="Metascore">${escapar(j.metascore)}</span>` : ''}
+          ${metacriticHTML(j.metacritic)}
           ${precioHTML(j.precio)}
         </li>`).join('');
     }
@@ -267,14 +303,8 @@ const paginas = {
     const gpu = porId(GPUS, pc.gpu);
     const miCPU = cpu.score;
     const miGPU = gpu.score;
-    const min = juego.min || {};
-    const rec = juego.rec || null;
-
-    const req = {
-      cpu: [reconocer(min.cpu, 'cpu'), rec && reconocer(rec.cpu, 'cpu')],
-      gpu: [reconocer(min.gpu, 'gpu'), rec && reconocer(rec.gpu, 'gpu')],
-      ram: [numeroGB(min.ram), rec && numeroGB(rec.ram)],
-    };
+    const { min, rec, req, perfil: juegoFPS } = analizarRequisitos(juego);
+    cargarVideos(juego, gpu);
 
     // 'rec' supera recomendados · 'ok' cumple (no hay recomendados) · 'min' entre ambos · 'bajo' · 'na' no se pudo comparar
     const estado = (valor, umbralMin, umbralRec) => {
@@ -348,22 +378,13 @@ const paginas = {
     if (!notas.length) notas.push([ICONOS.info, 'Ningún componente queda por debajo de lo recomendado. Revisá tener los controladores de video actualizados.']);
     $('#notas').innerHTML = notas.map(([ic, t]) => `<div class="card-inset note">${ic}<p>${t}</p></div>`).join('');
 
-    // FPS: sin benchmarks del juego, se derivan de los requisitos.
-    // Supuesto: la GPU recomendada da ~60 FPS en 1080p Alta; la mínima, ~20.
-    const gRec = ind(req.gpu[1]), gMin = ind(req.gpu[0]);
-    const cRec = ind(req.cpu[1]), cMin = ind(req.cpu[0]);
-    if (!gRec && !gMin) {
+    // FPS: sin benchmarks del juego, se derivan de los requisitos (analizarRequisitos).
+    if (!juegoFPS) {
       $('#fps-bloque').innerHTML = `<div class="card-inset note">${ICONOS.info}<p>No podemos estimar FPS para este juego: Steam no indica una placa de video concreta en sus requisitos.</p></div>`;
       $('#matriz-bloque').hidden = true;
       $('#analisis').hidden = true;
       return;
     }
-    const juegoFPS = {
-      gpuFps: gRec ? (60 * 100) / gRec : (20 * 100) / gMin,
-      cpuFps: cRec ? (90 * 100) / cRec : cMin ? (50 * 100) / cMin : 400,
-      tope: null,
-      min: { ram: req.ram[0] || 0 },
-    };
     const equipo = { cpu: { score: miCPU }, gpu: { score: miGPU }, ram: pc.ram };
     let res = RESOLUCIONES[pc.res] ? pc.res : '1080p';
     let cal = 'Alta';
@@ -516,23 +537,58 @@ const paginas = {
 
   calculadora() {
     const pc = leerPC();
-    const estado = { cpu: param('cpu') || pc.cpu, gpu: param('gpu') || pc.gpu, ram: pc.ram, juego: param('j') || JUEGOS[0].id, res: RESOLUCIONES[pc.res] ? pc.res : '1080p', cal: 'Alta' };
+    const estado = { cpu: param('cpu') || pc.cpu, gpu: param('gpu') || pc.gpu, ram: pc.ram, juego: null, perfil: null, res: RESOLUCIONES[pc.res] ? pc.res : '1080p', cal: 'Alta' };
     $('#c-cpu').innerHTML = opcionesAgrupadas(CPUS, estado.cpu);
     $('#c-gpu').innerHTML = opcionesAgrupadas(GPUS, estado.gpu);
     $('#c-ram').value = String(estado.ram);
-    $('#c-juego').innerHTML = opcionesJuegos(estado.juego);
+
+    // El juego se busca en Steam y su perfil de FPS sale de los requisitos, igual que en la página del juego.
+    const elegirJuego = async (id) => {
+      const ficha = $('#c-juego-ficha');
+      ficha.innerHTML = '<p class="muted" style="margin:0">Cargando juego…</p>';
+      try {
+        const r = await fetch(`/juego/${id}/datos`, { headers: { Accept: 'application/json' } });
+        const juego = await r.json();
+        if (!r.ok) throw new Error(juego.error);
+        estado.juego = juego;
+        estado.perfil = analizarRequisitos(juego).perfil;
+        const mc = juego.metacritic && juego.metacritic.puntaje;
+        ficha.innerHTML = `
+          ${juego.imagen ? `<img src="${escapar(juego.imagen)}" alt="" width="184" height="86">` : ''}
+          <div style="flex:1 1 200px;min-width:0">
+            <strong style="font-size:18px">${escapar(juego.nombre)}</strong>
+            <div class="meta" style="margin-top:4px">${juego.lanzamiento ? `<span>${escapar(juego.lanzamiento)}</span>` : ''}${juego.desarrolladores.length ? `<span>${escapar(juego.desarrolladores[0])}</span>` : ''}</div>
+          </div>
+          ${metacriticHTML(mc ?? null)}
+          <a href="/juego/${juego.id}" style="font-size:14px;font-weight:600">Ver ficha →</a>`;
+      } catch (e) {
+        estado.juego = null;
+        estado.perfil = null;
+        ficha.innerHTML = `<p class="muted" style="margin:0">${escapar(e.message || 'No pudimos cargar el juego.')}</p>`;
+      }
+      pintar();
+    };
+    buscadorJuegos($('#c-buscar'), (j) => elegirJuego(j.id));
 
     const pintar = () => {
       const cpu = porId(CPUS, estado.cpu);
       const gpu = porId(GPUS, estado.gpu);
-      const juego = porId(JUEGOS, estado.juego);
+      const juego = estado.perfil;
+      $('#r-sin-datos').hidden = !!juego;
+      $('#r-datos').hidden = !juego;
+      if (!juego) {
+        $('#r-sin-datos').textContent = estado.juego
+          ? 'No podemos estimar FPS para este juego: Steam no indica una placa de video concreta en sus requisitos.'
+          : 'Buscá un juego para calcular los FPS.';
+        return;
+      }
       const e = estimarFPS({ cpu, gpu, ram: estado.ram }, juego, estado.res, estado.cal);
       const n = nivelFPS(e.medio);
       $('#r-num').textContent = rangoTexto(e);
       $('#r-nivel').className = `fps-label ${n.clase}`;
       $('#r-nivel').textContent = n.texto;
       $('#r-gauge').style.width = `${Math.min(100, (e.medio / 144) * 100)}%`;
-      $('#r-juego').textContent = `${juego.nombre} · ${estado.res} · calidad ${estado.cal}`;
+      $('#r-juego').textContent = `${estado.juego.nombre} · ${estado.res} · calidad ${estado.cal}`;
       $('#r-limita').textContent = e.limita;
       const max = Math.max(e.porGPU, e.porCPU);
       $('#r-detalle').innerHTML = `
@@ -551,7 +607,6 @@ const paginas = {
       estado.cpu = $('#c-cpu').value;
       estado.gpu = $('#c-gpu').value;
       estado.ram = Number($('#c-ram').value);
-      estado.juego = $('#c-juego').value;
       pintar();
     });
     const sr = $('#seg-res'); sr.dataset.valor = estado.res;
@@ -564,6 +619,7 @@ const paginas = {
       pintar();
     });
     pintar();
+    elegirJuego(param('j') || 1091500);
   },
 
   componentes() {
@@ -627,7 +683,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const navPC = $('.nav-pc');
   if (navPC) navPC.textContent = resumenPC(leerPC());
 
-  $$('form[data-buscar-juego]').forEach(buscadorJuegos);
+  $$('form[data-buscar-juego]').forEach((f) => buscadorJuegos(f));
 
   const pagina = document.body.dataset.page;
   if (paginas[pagina]) paginas[pagina]();

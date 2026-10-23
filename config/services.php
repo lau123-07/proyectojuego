@@ -22,6 +22,11 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    // Videos de rendimiento y análisis (https://developers.google.com/youtube/v3).
+    'youtube' => [
+        'key' => env('YOUTUBE_API_KEY'),
+    ],
+
     // Tiempos de juego (https://api-docs.igdb.com). Credenciales de una app de Twitch Developer.
     'igdb' => [
         'client_id' => env('IGDB_CLIENT_ID'),

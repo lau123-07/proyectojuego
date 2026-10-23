@@ -101,6 +101,31 @@ function reconocer(texto, tipo) {
   return { indice: Math.min(...modelos.map((x) => x.indice)), modelos };
 }
 
+/**
+ * Requisitos reconocidos de una ficha de Steam y el perfil de FPS que se deriva de ellos
+ * (perfil null si Steam no indica una placa de video concreta).
+ * Supuesto: la GPU recomendada da ~60 FPS en 1080p Alta y la mínima ~20; la CPU recomendada ~90 y la mínima ~50.
+ */
+function analizarRequisitos(juego) {
+  const min = juego.min || {};
+  const rec = juego.rec || null;
+  const req = {
+    cpu: [reconocer(min.cpu, 'cpu'), rec && reconocer(rec.cpu, 'cpu')],
+    gpu: [reconocer(min.gpu, 'gpu'), rec && reconocer(rec.gpu, 'gpu')],
+    ram: [numeroGB(min.ram), rec && numeroGB(rec.ram)],
+  };
+  const ind = (r) => (r ? r.indice : null);
+  const [gMin, gRec] = req.gpu.map(ind);
+  const [cMin, cRec] = req.cpu.map(ind);
+  const perfil = !gRec && !gMin ? null : {
+    gpuFps: gRec ? (60 * 100) / gRec : (20 * 100) / gMin,
+    cpuFps: cRec ? (90 * 100) / cRec : cMin ? (50 * 100) / cMin : 400,
+    tope: juego.tope_fps || null,
+    min: { ram: req.ram[0] || 0 },
+  };
+  return { min, rec, req, perfil };
+}
+
 const numeroGB = (texto) => {
   const m = texto && normalizar(texto).match(/(\d+(?:[.,]\d+)?)\s*gb/);
   return m ? parseFloat(m[1].replace(',', '.')) : null;

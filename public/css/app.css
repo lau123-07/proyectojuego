@@ -197,6 +197,33 @@ td.you { background: rgba(196, 242, 90, 0.04); }
 .cover { width: 168px; height: 224px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border-strong); display: grid; place-items: center; font-family: var(--mono); font-size: 40px; font-weight: 600; color: var(--accent); flex: none; }
 .meta { display: flex; flex-wrap: wrap; gap: 8px 16px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
 
+/* Metacritic (colores según la escala del sitio: 75+ favorable, 50–74 mixta, menos de 50 desfavorable) */
+.metacritic { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); align-self: flex-start; }
+.metacritic:hover { color: var(--text); }
+.mc-num { min-width: 52px; height: 52px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center; font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--on-accent); }
+.mc-txt { display: flex; flex-direction: column; font-size: 13px; color: var(--text-2); line-height: 1.3; }
+.mc-txt strong { font-size: 15px; color: var(--text); }
+.mc-alto .mc-num, .mc-alto.sug-mc { background: #6BD66B; }
+.mc-medio .mc-num, .mc-medio.sug-mc { background: #FFD166; }
+.mc-bajo .mc-num, .mc-bajo.sug-mc { background: #FF8A65; }
+.mc-na .mc-num { background: var(--border); color: var(--muted); }
+.sug-mc { display: flex; flex-direction: column; align-items: center; flex: none; min-width: 58px; padding: 3px 6px; border-radius: 6px; color: var(--on-accent); font-family: var(--mono); font-weight: 700; font-size: 14px; line-height: 1.1; }
+.sug-mc small { font-family: var(--font); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.sug-mc.mc-na { background: transparent; border: 1px solid var(--border-strong); color: var(--muted); font-weight: 500; font-size: 12px; }
+
+/* Videos y fuentes */
+.videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.video { display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.video:hover { border-color: var(--accent); color: var(--text); }
+.video img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--surface-2); }
+.video-info { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 4px; }
+.video-info strong { font-size: 15px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.video-info span { font-size: 13px; color: var(--muted); }
+.fuentes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.fuentes a { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; min-height: 44px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); text-decoration: none; color: var(--text); }
+.fuentes a:hover { border-color: var(--accent); color: var(--text); }
+.fuentes span { font-size: 13px; color: var(--muted); }
+
 /* Horas de juego */
 .horas { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 .hora { display: flex; flex-direction: column; gap: 6px; padding: 22px 24px; }
@@ -268,3 +295,7 @@ tr.on td, tr.on th { background: rgba(196, 242, 90, 0.06); }
   .section { padding-bottom: 56px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Calculadora: juego elegido */
+.calc-ficha { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; min-height: 64px; }
+.calc-ficha img { width: 184px; height: auto; aspect-ratio: 460 / 215; border-radius: 8px; object-fit: cover; }

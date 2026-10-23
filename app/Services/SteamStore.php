@@ -52,7 +52,7 @@ class SteamStore
                     'id' => $item['id'],
                     'nombre' => $item['name'],
                     'imagen' => $item['tiny_image'] ?? null,
-                    'metascore' => ($item['metascore'] ?? '') ?: null,
+                    'metacritic' => ($item['metascore'] ?? '') !== '' ? (int) $item['metascore'] : null,
                     'precio' => isset($item['price']) ? $this->precio(
                         $item['price']['currency'],
                         $item['price']['initial'],
@@ -99,7 +99,12 @@ class SteamStore
             'editores' => $d['publishers'] ?? [],
             'generos' => collect($d['genres'] ?? [])->pluck('description')->all(),
             'lanzamiento' => $d['release_date']['date'] ?? null,
-            'metacritic' => $d['metacritic']['score'] ?? null,
+            'metacritic' => isset($d['metacritic']['score']) ? [
+                'puntaje' => $d['metacritic']['score'],
+                'url' => $d['metacritic']['url'] ?? null,
+            ] : null,
+            'web' => filled($d['website'] ?? null) ? $d['website'] : null,
+            'tope_fps' => config("juegos.topes_fps.{$d['steam_appid']}"),
             'gratis' => (bool) ($d['is_free'] ?? false),
             'precio' => isset($d['price_overview']) ? $this->precio(
                 $d['price_overview']['currency'],

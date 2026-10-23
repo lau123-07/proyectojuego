@@ -17,8 +17,15 @@
                 @if ($juego['desarrolladores'])<span>{{ implode(', ', $juego['desarrolladores']) }}</span>@endif
                 @if ($juego['lanzamiento'])<span>{{ $juego['lanzamiento'] }}</span>@endif
                 @if ($juego['generos'])<span>{{ implode(' · ', array_slice($juego['generos'], 0, 3)) }}</span>@endif
-                @if ($juego['metacritic'])<span>Metacritic {{ $juego['metacritic'] }}</span>@endif
             </div>
+            @php
+                $mc = $juego['metacritic']['puntaje'] ?? null;
+                $mcClase = $mc === null ? 'mc-na' : ($mc >= 75 ? 'mc-alto' : ($mc >= 50 ? 'mc-medio' : 'mc-bajo'));
+            @endphp
+            <a class="metacritic {{ $mcClase }}" @if ($juego['metacritic']['url'] ?? null) href="{{ $juego['metacritic']['url'] }}" target="_blank" rel="noopener" @endif>
+                <span class="mc-num">{{ $mc ?? '—' }}</span>
+                <span class="mc-txt"><strong>Metacritic</strong>{{ $mc === null ? 'Sin puntaje de la crítica' : ($mc >= 75 ? 'Críticas favorables' : ($mc >= 50 ? 'Críticas mixtas' : 'Críticas desfavorables')) }}</span>
+            </a>
         </div>
     </div>
     <div class="precio-grande">
@@ -234,6 +241,41 @@
         </div>
     </div>
     <p class="muted" style="font-size:14px;margin:16px 0 0">¿No es tu equipo? <a href="{{ route('inicio') }}#mi-pc">Editá tu PC</a> y volvé a comprobar.</p>
+</section>
+
+<section class="container section" aria-labelledby="fuentes-titulo">
+    <div class="section-head">
+        <div>
+            <span class="kicker">05 — FUENTES Y VIDEOS</span>
+            <h2 id="fuentes-titulo" class="h2" style="margin-top:6px">Comprobalo con otras fuentes</h2>
+        </div>
+        <p>Nuestras estimaciones son orientativas: los videos de rendimiento muestran el juego funcionando en equipos reales.</p>
+    </div>
+
+    <div class="stack" style="gap:28px">
+        <div>
+            <h3 id="videos-rend-titulo" style="font-size:19px;margin-bottom:14px">Rendimiento con tu placa de video</h3>
+            <div id="videos-rendimiento" class="videos"><p class="muted">Buscando videos…</p></div>
+        </div>
+        <div>
+            <h3 style="font-size:19px;margin-bottom:14px">Análisis y reseñas</h3>
+            <div id="videos-analisis" class="videos"><p class="muted">Buscando videos…</p></div>
+        </div>
+        <div>
+            <h3 style="font-size:19px;margin-bottom:14px">Páginas oficiales y de referencia</h3>
+            <ul class="fuentes">
+                @if ($juego['web'])
+                    <li><a href="{{ $juego['web'] }}" target="_blank" rel="noopener"><strong>Sitio oficial</strong><span>{{ parse_url($juego['web'], PHP_URL_HOST) }}</span></a></li>
+                @endif
+                <li><a href="{{ $juego['url'] }}" target="_blank" rel="noopener"><strong>Steam</strong><span>Tienda, requisitos y reseñas de jugadores</span></a></li>
+                @if ($juego['metacritic']['url'] ?? null)
+                    <li><a href="{{ $juego['metacritic']['url'] }}" target="_blank" rel="noopener"><strong>Metacritic</strong><span>Puntaje y reseñas de la crítica</span></a></li>
+                @endif
+                <li><a href="https://www.pcgamingwiki.com/api/appid.php?appid={{ $juego['id'] }}" target="_blank" rel="noopener"><strong>PCGamingWiki</strong><span>Opciones gráficas, DLSS / FSR, arreglos conocidos</span></a></li>
+                <li><a href="https://howlongtobeat.com/?q={{ urlencode($juego['nombre']) }}" target="_blank" rel="noopener"><strong>HowLongToBeat</strong><span>Duración según los jugadores</span></a></li>
+            </ul>
+        </div>
+    </div>
 </section>
 
 <section class="container section">
